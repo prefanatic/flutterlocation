@@ -73,6 +73,11 @@ public class LocationPlugin implements MethodCallHandler, StreamHandler {
 
     LocationPlugin(Activity activity) {
         this.activity = activity;
+        if (activity == null) {
+            Log.w(METHOD_CHANNEL_NAME, "Activity is null, cannot create plugin.");
+            return;
+        }
+
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(activity);
         mSettingsClient = LocationServices.getSettingsClient(activity);
         createLocationCallback();

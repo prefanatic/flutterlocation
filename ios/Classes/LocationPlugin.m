@@ -15,6 +15,8 @@
 @implementation LocationPlugin
 
 +(void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {
+    LocationPermissionStreamHandler *locationPermissionStreamHandler = [[LocationPermissionStreamHandler alloc] init];
+
     FlutterMethodChannel *channel = [FlutterMethodChannel methodChannelWithName:@"lyokone/location" binaryMessenger:registrar.messenger];
     FlutterEventChannel *locationStream = [FlutterEventChannel eventChannelWithName:@"lyokone/locationstream" binaryMessenger:registrar.messenger];
 

@@ -53,6 +53,7 @@ import io.flutter.plugin.common.PluginRegistry.Registrar;
 public class LocationPlugin implements MethodCallHandler, StreamHandler {
     private static final String STREAM_CHANNEL_NAME = "lyokone/locationstream";
     private static final String METHOD_CHANNEL_NAME = "lyokone/location";
+    private static final String PERMISSION_CHANNEL_NAME = "lyokone/permissionstream";
 
     private static final int REQUEST_PERMISSIONS_REQUEST_CODE = 34;
     private static final int REQUEST_CHECK_SETTINGS = 0x1;
@@ -65,6 +66,7 @@ public class LocationPlugin implements MethodCallHandler, StreamHandler {
     private LocationSettingsRequest mLocationSettingsRequest;
     private LocationCallback mLocationCallback;
     private PluginRegistry.RequestPermissionsResultListener mPermissionsResultListener;
+    private LocationPermissionStreamHandler mLocationPermissionStreamHandler;
 
     private EventSink events;
     private Result result;
@@ -77,7 +79,7 @@ public class LocationPlugin implements MethodCallHandler, StreamHandler {
             Log.w(METHOD_CHANNEL_NAME, "Activity is null, cannot create plugin.");
             return;
         }
-      
+
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(activity);
         mSettingsClient = LocationServices.getSettingsClient(activity);
         createLocationCallback();
@@ -279,6 +281,10 @@ public class LocationPlugin implements MethodCallHandler, StreamHandler {
                 result.success(1);
             } else {
                 result.success(0);
+            }
+        } else if (call.method.equals("askForPermission")) {
+            if (!checkPermissions()) {
+                requestPermissions();
             }
         } else if (call.method.equals("askForPermission")) {
             if (!checkPermissions()) {

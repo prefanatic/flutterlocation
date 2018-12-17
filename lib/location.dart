@@ -20,6 +20,10 @@ class Location {
       .invokeMethod('askForPermission')
       .then((result) => result == 1);
 
+  Future<bool> locationServicesEnabled() => _channel
+      .invokeMethod('locationServicesEnabled')
+      .then((result) => result);
+
   Stream<Map<String, double>> onLocationChanged() {
     if (_onLocationChanged == null) {
       _onLocationChanged = _locationStream

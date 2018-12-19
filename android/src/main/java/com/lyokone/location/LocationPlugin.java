@@ -74,9 +74,11 @@ public class LocationPlugin implements MethodCallHandler, StreamHandler {
     private Result permissionResult;
 
     private final Activity activity;
+    private final PluginRegistry.Registrar registrar;
 
-    LocationPlugin(Activity activity) {
-        this.activity = activity;
+    LocationPlugin(PluginRegistry.Registrar registrar) {
+        this.registrar = registrar
+        this.activity = registrar.activity();
         if (activity == null) {
             Log.w(METHOD_CHANNEL_NAME, "Activity is null, cannot create plugin.");
             return;
@@ -226,7 +228,7 @@ public class LocationPlugin implements MethodCallHandler, StreamHandler {
      */
     public static void registerWith(Registrar registrar) {
         channel = new MethodChannel(registrar.messenger(), METHOD_CHANNEL_NAME);
-        LocationPlugin locationPlugin = new LocationPlugin(registrar.activity());
+        LocationPlugin locationPlugin = new LocationPlugin(registrar);
         channel.setMethodCallHandler(locationPlugin);
         registrar.addRequestPermissionsResultListener(locationPlugin.getPermissionsResultListener());
 
@@ -291,7 +293,7 @@ public class LocationPlugin implements MethodCallHandler, StreamHandler {
             }
         } else if (call.method.equals("locationServicesEnabled")) {
             int locationMode = 0;
-            Context context = activity.this;
+            Context context = registrar.context();
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
                 try {
                     locationMode = Settings.Secure.getInt(context.getContentResolver(), Settings.Secure.LOCATION_MODE);

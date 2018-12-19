@@ -47,7 +47,7 @@ import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.PluginRegistry;
 import io.flutter.plugin.common.PluginRegistry.Registrar;
 import android.text.TextUtils;
-import android.provider.Settings.Secure;
+import android.provider.Settings;
 import android.content.Context;
 
 /**

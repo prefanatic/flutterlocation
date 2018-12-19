@@ -286,7 +286,7 @@ public class LocationPlugin implements MethodCallHandler, StreamHandler {
                 this.permissionResult = result;
                 requestPermissions();
             }
-        } else if (call.method.equals("locationServicesEnabled") {
+        } else if (call.method.equals("locationServicesEnabled")) {
             int locationMode = 0;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
                 try {

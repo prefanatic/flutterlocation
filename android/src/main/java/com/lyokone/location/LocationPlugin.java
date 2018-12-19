@@ -286,9 +286,18 @@ public class LocationPlugin implements MethodCallHandler, StreamHandler {
                 this.permissionResult = result;
                 requestPermissions();
             }
-        } else if (call.method.equals("askForPermission")) {
-            if (!checkPermissions()) {
-                requestPermissions();
+        } else if (call.method.equals("locationServicesEnabled") {
+            int locationMode = 0;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                try {
+                    locationMode = Settings.Secure.getInt(context.getContentResolver(), Settings.Secure.LOCATION_MODE);
+                } catch (Settings.SettingNotFoundException e) {
+                    e.printStackTrace();
+                    result.error("No location service status available", "There was an issue with retrieving location service status", null);
+                }
+                result.success(locationMode != Settings.Secure.LOCATION_MODE_OFF);
+            } else {
+                result.success(!TextUtils.isEmpty(Settings.Secure.getString(context.getContentResolver(), Settings.Secure.LOCATION_MODE)));
             }
         } else {
             result.notImplemented();
@@ -303,7 +312,7 @@ public class LocationPlugin implements MethodCallHandler, StreamHandler {
         }
         getLastLocation(null);
         /**
-         * Requests location updates from the FusedLocationApi. Note: we don't call this unless location
+         * Requests location updates from tghe FusedLocationApi. Note: we don't call this unless location
          * runtime permission has been granted.
          */
         mSettingsClient.checkLocationSettings(mLocationSettingsRequest)

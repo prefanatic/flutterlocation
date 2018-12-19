@@ -22,10 +22,7 @@ class Location {
 
   Future<bool> locationServicesEnabled() => _channel
       .invokeMethod('locationServicesEnabled')
-      .then((result){
-        print("CURRENT RESULT: ${result}");
-        return result == 1;
-  });
+      .then((result) => result);
 
   Stream<Map<String, double>> onLocationChanged() {
     if (_onLocationChanged == null) {

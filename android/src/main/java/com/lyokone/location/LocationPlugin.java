@@ -68,6 +68,7 @@ public class LocationPlugin implements MethodCallHandler, StreamHandler {
 
     private EventSink events;
     private Result result;
+    private Result permissionResult;
 
     private final Activity activity;
 
@@ -97,7 +98,7 @@ public class LocationPlugin implements MethodCallHandler, StreamHandler {
                 if (requestCode == REQUEST_PERMISSIONS_REQUEST_CODE && permissions.length == 1 && permissions[0].equals(Manifest.permission.ACCESS_FINE_LOCATION)) {
                     if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                         if (channel != null) {
-                            channel.invokeMethod("locationPermissionResponse", true);
+                            permissionResult.success(1);
                         }
                         if (result != null) {
                             getLastLocation(result);
@@ -107,7 +108,7 @@ public class LocationPlugin implements MethodCallHandler, StreamHandler {
                     } else {
                         if (!shouldShowRequestPermissionRationale()) {
                             if (channel != null) {
-                               channel.invokeMethod("locationPermissionResponse", false);
+                                permissionResult.success(0);
                             }
                             if (result != null) {
                                 result.error("PERMISSION_DENIED_NEVER_ASK", "Location permission denied forever- please open app settings", null);
@@ -117,7 +118,7 @@ public class LocationPlugin implements MethodCallHandler, StreamHandler {
                             }
                         } else {
                             if (channel != null) {
-                                channel.invokeMethod("locationPermissionResponse", false);
+                                permissionResult.success(0);
                             }
                             if (result != null) {
                                 result.error("PERMISSION_DENIED", "Location permission denied", null);
@@ -282,6 +283,7 @@ public class LocationPlugin implements MethodCallHandler, StreamHandler {
             }
         } else if (call.method.equals("askForPermission")) {
             if (!checkPermissions()) {
+                this.permissionResult = result;
                 requestPermissions();
             }
         } else if (call.method.equals("askForPermission")) {

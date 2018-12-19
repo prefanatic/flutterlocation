@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 
 class Location {
   static const MethodChannel _channel = const MethodChannel('lyokone/location');
-  static const EventChannel _stream = const EventChannel('lyokone/locationstream');
+  static const EventChannel _locationStream = const EventChannel('lyokone/locationstream');
 
   Stream<Map<String,double>> _onLocationChanged;
 
@@ -15,11 +15,14 @@ class Location {
   Future<bool> hasPermission() => _channel
     .invokeMethod('hasPermission')
     .then((result) => result == 1);
-  
+
+  Future<bool> askForPermission() => _channel
+      .invokeMethod('askForPermission')
+      .then((result) => result == 1);
 
   Stream<Map<String, double>> onLocationChanged() {
     if (_onLocationChanged == null) {
-      _onLocationChanged = _stream
+      _onLocationChanged = _locationStream
           .receiveBroadcastStream()
           .map<Map<String, double>>(
               (element) => element.cast<String, double>());

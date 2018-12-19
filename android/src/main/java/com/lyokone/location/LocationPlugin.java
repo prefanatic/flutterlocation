@@ -58,7 +58,7 @@ public class LocationPlugin implements MethodCallHandler, StreamHandler {
     private static final int REQUEST_CHECK_SETTINGS = 0x1;
     private static final long UPDATE_INTERVAL_IN_MILLISECONDS = 10000;
     private static final long FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS = UPDATE_INTERVAL_IN_MILLISECONDS / 2;
-
+    private static MethodChannel channel;
     private FusedLocationProviderClient mFusedLocationClient;
     private SettingsClient mSettingsClient;
     private LocationRequest mLocationRequest;
@@ -77,7 +77,7 @@ public class LocationPlugin implements MethodCallHandler, StreamHandler {
             Log.w(METHOD_CHANNEL_NAME, "Activity is null, cannot create plugin.");
             return;
         }
-
+      
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(activity);
         mSettingsClient = LocationServices.getSettingsClient(activity);
         createLocationCallback();
@@ -96,6 +96,9 @@ public class LocationPlugin implements MethodCallHandler, StreamHandler {
             public boolean onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
                 if (requestCode == REQUEST_PERMISSIONS_REQUEST_CODE && permissions.length == 1 && permissions[0].equals(Manifest.permission.ACCESS_FINE_LOCATION)) {
                     if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                        if (channel != null) {
+                            channel.invokeMethod("locationPermissionResponse", true);
+                        }
                         if (result != null) {
                             getLastLocation(result);
                         } else if (events != null) {
@@ -103,6 +106,9 @@ public class LocationPlugin implements MethodCallHandler, StreamHandler {
                         }
                     } else {
                         if (!shouldShowRequestPermissionRationale()) {
+                            if (channel != null) {
+                               channel.invokeMethod("locationPermissionResponse", false);
+                            }
                             if (result != null) {
                                 result.error("PERMISSION_DENIED_NEVER_ASK", "Location permission denied forever- please open app settings", null);
                             } else if (events != null) {
@@ -110,6 +116,9 @@ public class LocationPlugin implements MethodCallHandler, StreamHandler {
                                 events = null;
                             }
                         } else {
+                            if (channel != null) {
+                                channel.invokeMethod("locationPermissionResponse", false);
+                            }
                             if (result != null) {
                                 result.error("PERMISSION_DENIED", "Location permission denied", null);
                             } else if (events != null) {
@@ -212,15 +221,15 @@ public class LocationPlugin implements MethodCallHandler, StreamHandler {
      * Plugin registration.
      */
     public static void registerWith(Registrar registrar) {
-        final MethodChannel channel = new MethodChannel(registrar.messenger(), METHOD_CHANNEL_NAME);
-        LocationPlugin locationWithMethodChannel = new LocationPlugin(registrar.activity());
-        channel.setMethodCallHandler(locationWithMethodChannel);
-        registrar.addRequestPermissionsResultListener(locationWithMethodChannel.getPermissionsResultListener());
+        channel = new MethodChannel(registrar.messenger(), METHOD_CHANNEL_NAME);
+        LocationPlugin locationPlugin = new LocationPlugin(registrar.activity());
+        channel.setMethodCallHandler(locationPlugin);
+        registrar.addRequestPermissionsResultListener(locationPlugin.getPermissionsResultListener());
 
         final EventChannel eventChannel = new EventChannel(registrar.messenger(), STREAM_CHANNEL_NAME);
-        LocationPlugin locationWithEventChannel = new LocationPlugin(registrar.activity());
-        eventChannel.setStreamHandler(locationWithEventChannel);
-        registrar.addRequestPermissionsResultListener(locationWithEventChannel.getPermissionsResultListener());
+
+        eventChannel.setStreamHandler(locationPlugin);
+        registrar.addRequestPermissionsResultListener(locationPlugin.getPermissionsResultListener());
     }
 
     private void getLastLocation(final Result result) {
@@ -262,15 +271,18 @@ public class LocationPlugin implements MethodCallHandler, StreamHandler {
         if (call.method.equals("getLocation")) {
             if (!checkPermissions()) {
                 this.result = result;
-                requestPermissions();
                 return;
             }
             getLastLocation(result);
         } else if(call.method.equals("hasPermission")) {
-            if(checkPermissions()) {
+            if (checkPermissions()) {
                 result.success(1);
             } else {
-                result.error("PERMISSION_DENIED", "The user explicitly denied the use of location services for this app or location services are currently disabled in Settings.", null);
+                result.success(0);
+            }
+        } else if (call.method.equals("askForPermission")) {
+            if (!checkPermissions()) {
+                requestPermissions();
             }
         } else {
             result.notImplemented();
@@ -281,7 +293,6 @@ public class LocationPlugin implements MethodCallHandler, StreamHandler {
     public void onListen(Object arguments, final EventSink eventsSink) {
         events = eventsSink;
         if (!checkPermissions()) {
-            requestPermissions();
             return;
         }
         getLastLocation(null);

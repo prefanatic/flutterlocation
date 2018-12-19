@@ -7,20 +7,22 @@
 @property (copy, nonatomic)   FlutterResult      flutterResult;
 @property (assign, nonatomic) BOOL               locationWanted;
 
-@property (copy, nonatomic)   FlutterEventSink   flutterEventSink;
 @property (assign, nonatomic) BOOL               flutterListening;
-@property (assign, nonatomic) BOOL               hasInit;
+@property (copy, nonatomic)   FlutterEventSink   flutterEventSink;
+@property(nonatomic, retain) FlutterMethodChannel *channel;
 @end
 
 @implementation LocationPlugin
 
 +(void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {
     FlutterMethodChannel *channel = [FlutterMethodChannel methodChannelWithName:@"lyokone/location" binaryMessenger:registrar.messenger];
-    FlutterEventChannel *stream = [FlutterEventChannel eventChannelWithName:@"lyokone/locationstream" binaryMessenger:registrar.messenger];
+    FlutterEventChannel *locationStream = [FlutterEventChannel eventChannelWithName:@"lyokone/locationstream" binaryMessenger:registrar.messenger];
 
     LocationPlugin *instance = [[LocationPlugin alloc] init];
+    instance.channel = channel;
+
     [registrar addMethodCallDelegate:instance channel:channel];
-    [stream setStreamHandler:instance];
+    [locationStream setStreamHandler:instance];
 }
 
 -(instancetype)init {
@@ -29,16 +31,14 @@
     if (self) {
         self.locationWanted = NO;
         self.flutterListening = NO;
-        self.hasInit = NO;
-  
     }
     return self;
 }
-    
--(void)initLocation {
-    if (!(self.hasInit)) {
-        self.hasInit = YES;
-        
+
+-(void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result {
+    NSNumber *hasPermissionNum = [self checkLocationPermission];
+    BOOL hasPermission = [hasPermissionNum boolValue];
+    if ([call.method isEqualToString:@"askForPermission"]) {
         if ([CLLocationManager locationServicesEnabled]) {
             self.clLocationManager = [[CLLocationManager alloc] init];
             self.clLocationManager.delegate = self;
@@ -51,49 +51,43 @@
             else {
                 [NSException raise:NSInternalInconsistencyException format:@"To use location in iOS8 you need to define either NSLocationWhenInUseUsageDescription or NSLocationAlwaysUsageDescription in the app bundle's Info.plist file"];
             }
-            
-            self.clLocationManager.desiredAccuracy = kCLLocationAccuracyBest;
-        }
-    }
-}
 
--(void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result {
-    [self initLocation];
-    if ([call.method isEqualToString:@"getLocation"]) {
-        if ([CLLocationManager authorizationStatus] == kCLAuthorizationStatusDenied && [CLLocationManager locationServicesEnabled])
-        {
-            // Location services are requested but user has denied
-            result([FlutterError errorWithCode:@"PERMISSION_DENIED"
-                                   message:@"The user explicitly denied the use of location services for this app or location services are currently disabled in Settings."
-                                   details:nil]);
-            return;
+            self.clLocationManager.desiredAccuracy = kCLLocationAccuracyBest;
+            [self.clLocationManager startUpdatingLocation];
         }
-        
-        self.flutterResult = result;
-        self.locationWanted = YES;
-        [self.clLocationManager startUpdatingLocation];
+    } else if ([call.method isEqualToString:@"getLocation"]) {
+        if (hasPermission) {
+                self.flutterResult = result;
+                self.locationWanted = YES;
+                [self.clLocationManager startUpdatingLocation];
+        } else {
+                    // Location services are requested but user has denied
+                    result([FlutterError errorWithCode:@"PERMISSION_DENIED"
+                                           message:@"The user explicitly denied the use of location services for this app or location services are currently disabled in Settings."
+                                           details:nil]);
+                    return;
+        }
     } else if ([call.method isEqualToString:@"hasPermission"]) {
         NSLog(@"Do has permissions");
-        if ([CLLocationManager locationServicesEnabled]) {
-            
-            if ([CLLocationManager authorizationStatus] == kCLAuthorizationStatusDenied)
-            {
-                // Location services are requested but user has denied
-                result(@(0));
-            } else {
-                // Location services are available
-                result(@(1));
-            }
-            
-            
-        } else {
-            // Location is not yet available
-            result(@(0));
-        }
-//
+        result(hasPermissionNum);
     } else {
         result(FlutterMethodNotImplemented);
     }
+}
+
+-(NSNumber*) checkLocationPermission {
+        if ([CLLocationManager locationServicesEnabled]) {
+            switch ([CLLocationManager authorizationStatus]) {
+            case kCLAuthorizationStatusNotDetermined:
+            case kCLAuthorizationStatusDenied:
+            case kCLAuthorizationStatusRestricted:
+                return [NSNumber numberWithInt:0];
+            case kCLAuthorizationStatusAuthorizedAlways:
+            case kCLAuthorizationStatusAuthorizedWhenInUse:
+                return [NSNumber numberWithInt:1];
+            }
+        }
+        return [NSNumber numberWithInt:0];
 }
 
 -(FlutterError*)onListenWithArguments:(id)arguments eventSink:(FlutterEventSink)events {
@@ -127,6 +121,18 @@
         self.flutterEventSink(coordinatesDict);
     } else {
         [self.clLocationManager stopUpdatingLocation];
+    }
+}
+
+- (void)locationManager:(CLLocationManager *)manager
+didChangeAuthorizationStatus:(CLAuthorizationStatus)status {
+    BOOL hasPermission = NO;
+    if (status == kCLAuthorizationStatusDenied)
+    {
+        [self.channel invokeMethod:@"locationPermissionResponse" arguments:[NSNumber numberWithBool:hasPermission]];
+    } else if (status == kCLAuthorizationStatusAuthorized || status == kCLAuthorizationStatusAuthorizedAlways || status == kCLAuthorizationStatusAuthorizedWhenInUse) {
+        hasPermission = YES;
+        [self.channel invokeMethod:@"locationPermissionResponse" arguments:[NSNumber numberWithBool:hasPermission]];
     }
 }
 

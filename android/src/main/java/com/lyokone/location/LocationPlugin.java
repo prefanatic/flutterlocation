@@ -48,6 +48,7 @@ import io.flutter.plugin.common.PluginRegistry;
 import io.flutter.plugin.common.PluginRegistry.Registrar;
 import android.text.TextUtils;
 import android.provider.Settings.Secure;
+import android.content.Context;
 
 /**
  * LocationPlugin
@@ -290,16 +291,17 @@ public class LocationPlugin implements MethodCallHandler, StreamHandler {
             }
         } else if (call.method.equals("locationServicesEnabled")) {
             int locationMode = 0;
+            Context context = getApplicationContext();
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
                 try {
-                    locationMode = Settings.Secure.getInt(App.appInstance.getContentResolver(), Settings.Secure.LOCATION_MODE);
+                    locationMode = Settings.Secure.getInt(context.getContentResolver(), Settings.Secure.LOCATION_MODE);
                 } catch (Settings.SettingNotFoundException e) {
                     e.printStackTrace();
                     result.error("No location service status available", "There was an issue with retrieving location service status", null);
                 }
                 result.success(locationMode != Settings.Secure.LOCATION_MODE_OFF);
             } else {
-                result.success(!TextUtils.isEmpty(Settings.Secure.getString(App.appInstance.getContentResolver(), Settings.Secure.LOCATION_MODE)));
+                result.success(!TextUtils.isEmpty(Settings.Secure.getString(context.getContentResolver(), Settings.Secure.LOCATION_MODE)));
             }
         } else {
             result.notImplemented();

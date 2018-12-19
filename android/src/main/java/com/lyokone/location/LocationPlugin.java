@@ -77,7 +77,7 @@ public class LocationPlugin implements MethodCallHandler, StreamHandler {
     private final PluginRegistry.Registrar registrar;
 
     LocationPlugin(PluginRegistry.Registrar registrar) {
-        this.registrar = registrar
+        this.registrar = registrar;
         this.activity = registrar.activity();
         if (activity == null) {
             Log.w(METHOD_CHANNEL_NAME, "Activity is null, cannot create plugin.");

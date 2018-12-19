@@ -291,7 +291,7 @@ public class LocationPlugin implements MethodCallHandler, StreamHandler {
             }
         } else if (call.method.equals("locationServicesEnabled")) {
             int locationMode = 0;
-            Context context = getApplicationContext();
+            Context context = activity.this;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
                 try {
                     locationMode = Settings.Secure.getInt(context.getContentResolver(), Settings.Secure.LOCATION_MODE);

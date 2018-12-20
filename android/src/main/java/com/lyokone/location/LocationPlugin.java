@@ -318,7 +318,7 @@ public class LocationPlugin implements MethodCallHandler, StreamHandler {
         }
         getLastLocation(null);
         /**
-         * Requests location updates from tghe FusedLocationApi. Note: we don't call this unless location
+         * Requests location updates from the FusedLocationApi. Note: we don't call this unless location
          * runtime permission has been granted.
          */
         mSettingsClient.checkLocationSettings(mLocationSettingsRequest)

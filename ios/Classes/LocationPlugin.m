@@ -9,6 +9,7 @@
 
 @property (assign, nonatomic) BOOL               flutterListening;
 @property (copy, nonatomic)   FlutterEventSink   flutterEventSink;
+@property (copy, nonatomic)   FlutterResult  permissionResult;
 @property(nonatomic, retain) FlutterMethodChannel *channel;
 @end
 
@@ -54,6 +55,7 @@
 
             self.clLocationManager.desiredAccuracy = kCLLocationAccuracyBest;
             [self.clLocationManager startUpdatingLocation];
+            self.permissionResult = result;
         }
     } else if ([call.method isEqualToString:@"getLocation"]) {
         if (hasPermission) {
@@ -126,13 +128,13 @@
 
 - (void)locationManager:(CLLocationManager *)manager
 didChangeAuthorizationStatus:(CLAuthorizationStatus)status {
-    BOOL hasPermission = NO;
+    NSNumber *hasPermissionNum = [NSNumber numberWithInt:0];
     if (status == kCLAuthorizationStatusDenied)
     {
-        [self.channel invokeMethod:@"locationPermissionResponse" arguments:[NSNumber numberWithBool:hasPermission]];
+        self.permissionResult(hasPermissionNum);
     } else if (status == kCLAuthorizationStatusAuthorized || status == kCLAuthorizationStatusAuthorizedAlways || status == kCLAuthorizationStatusAuthorizedWhenInUse) {
-        hasPermission = YES;
-        [self.channel invokeMethod:@"locationPermissionResponse" arguments:[NSNumber numberWithBool:hasPermission]];
+        hasPermissionNum = [NSNumber numberWithInt:1];
+        self.permissionResult(hasPermissionNum);
     }
 }
 

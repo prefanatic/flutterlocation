@@ -46,6 +46,9 @@ import io.flutter.plugin.common.MethodChannel.Result;
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.PluginRegistry;
 import io.flutter.plugin.common.PluginRegistry.Registrar;
+import android.text.TextUtils;
+import android.provider.Settings;
+import android.content.Context;
 
 /**
  * LocationPlugin
@@ -68,16 +71,19 @@ public class LocationPlugin implements MethodCallHandler, StreamHandler {
 
     private EventSink events;
     private Result result;
+    private Result permissionResult;
 
     private final Activity activity;
+    private final PluginRegistry.Registrar registrar;
 
-    LocationPlugin(Activity activity) {
-        this.activity = activity;
+    LocationPlugin(PluginRegistry.Registrar registrar) {
+        this.registrar = registrar;
+        this.activity = registrar.activity();
         if (activity == null) {
             Log.w(METHOD_CHANNEL_NAME, "Activity is null, cannot create plugin.");
             return;
         }
-      
+
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(activity);
         mSettingsClient = LocationServices.getSettingsClient(activity);
         createLocationCallback();
@@ -97,7 +103,7 @@ public class LocationPlugin implements MethodCallHandler, StreamHandler {
                 if (requestCode == REQUEST_PERMISSIONS_REQUEST_CODE && permissions.length == 1 && permissions[0].equals(Manifest.permission.ACCESS_FINE_LOCATION)) {
                     if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                         if (channel != null) {
-                            channel.invokeMethod("locationPermissionResponse", true);
+                            permissionResult.success(1);
                         }
                         if (result != null) {
                             getLastLocation(result);
@@ -107,7 +113,7 @@ public class LocationPlugin implements MethodCallHandler, StreamHandler {
                     } else {
                         if (!shouldShowRequestPermissionRationale()) {
                             if (channel != null) {
-                               channel.invokeMethod("locationPermissionResponse", false);
+                                permissionResult.success(0);
                             }
                             if (result != null) {
                                 result.error("PERMISSION_DENIED_NEVER_ASK", "Location permission denied forever- please open app settings", null);
@@ -117,7 +123,7 @@ public class LocationPlugin implements MethodCallHandler, StreamHandler {
                             }
                         } else {
                             if (channel != null) {
-                                channel.invokeMethod("locationPermissionResponse", false);
+                                permissionResult.success(0);
                             }
                             if (result != null) {
                                 result.error("PERMISSION_DENIED", "Location permission denied", null);
@@ -222,7 +228,7 @@ public class LocationPlugin implements MethodCallHandler, StreamHandler {
      */
     public static void registerWith(Registrar registrar) {
         channel = new MethodChannel(registrar.messenger(), METHOD_CHANNEL_NAME);
-        LocationPlugin locationPlugin = new LocationPlugin(registrar.activity());
+        LocationPlugin locationPlugin = new LocationPlugin(registrar);
         channel.setMethodCallHandler(locationPlugin);
         registrar.addRequestPermissionsResultListener(locationPlugin.getPermissionsResultListener());
 
@@ -282,7 +288,22 @@ public class LocationPlugin implements MethodCallHandler, StreamHandler {
             }
         } else if (call.method.equals("askForPermission")) {
             if (!checkPermissions()) {
+                this.permissionResult = result;
                 requestPermissions();
+            }
+        } else if (call.method.equals("locationServicesEnabled")) {
+            int locationMode = 0;
+            Context context = registrar.context();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                try {
+                    locationMode = Settings.Secure.getInt(context.getContentResolver(), Settings.Secure.LOCATION_MODE);
+                } catch (Settings.SettingNotFoundException e) {
+                    e.printStackTrace();
+                    result.error("No location service status available", "There was an issue with retrieving location service status", null);
+                }
+                result.success(locationMode != Settings.Secure.LOCATION_MODE_OFF);
+            } else {
+                result.success(!TextUtils.isEmpty(Settings.Secure.getString(context.getContentResolver(), Settings.Secure.LOCATION_MODE)));
             }
         } else {
             result.notImplemented();
